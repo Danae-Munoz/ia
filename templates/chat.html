@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Chat IA</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        body { margin: 0; font-family: Arial, sans-serif; display: flex; height: 100vh; }
+        .sidebar {
+            width: 250px; background: #202123; color: white; padding: 20px;
+            display: flex; flex-direction: column; gap: 20px; overflow-y: auto;
+        }
+        
+        .sidebar h2 { margin-top: 0; }
+        .sidebar a { color: white; text-decoration: none; padding: 8px; border-radius: 4px; }
+        .sidebar a:hover { background: #343541; }
+
+        .main { flex: 1; display: flex; flex-direction: column; background: #f5f5f5; }
+        .chat-box {
+            flex: 1; padding: 20px; overflow-y: auto;
+        }
+        .user, .assistant {
+            max-width: 80%; margin: 10px; padding: 10px; border-radius: 10px;
+        }
+        .user {
+            background: #d1e7dd; align-self: flex-end;
+        }
+        .assistant {
+            background: #fff; border: 1px solid #ccc; align-self: flex-start;
+        }
+
+        .typing {
+            margin-top: 10px;
+            font-style: italic;
+            color: #888;
+        }
+
+        .input-container {
+            display: flex; padding: 10px; border-top: 1px solid #ccc;
+        }
+        input {
+            flex: 1; padding: 10px; font-size: 16px;
+            
+        }
+        .sessions {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .session-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #2c2f33;
+            padding: 6px 10px;
+            margin-bottom: 6px;
+            border-radius: 4px;
+        }
+        
+        .session-item a {
+            color: white;
+            text-decoration: none;
+            flex: 1;
+        }
+        
+        .session-item form {
+            margin: 0;
+        }
+        
+        .session-item button {
+            background: #ff4d4d;
+            border: none;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .session-item button:hover {
+            background: #ff1a1a;
+        }
+        
+    </style>
+    <script>
+        let session_id = null;  // Variable para almacenar el session_id
+
+        async function iniciarChat() {
+            const input = document.getElementById("mensaje");
+            const contenido = input.value.trim();
+        
+            if (contenido && !session_id) {
+                // Crear nuevo session_id
+                session_id = contenido.slice(0, 20);  // O usa UUID si prefieres
+                
+                // Agregar nuevo enlace en el sidebar junto con el botón de eliminar
+                const chatList = document.getElementById("chat-list");
+                const newChatItem = document.createElement("div");
+                newChatItem.classList.add("session-item");
+        
+                // Crear enlace con el nombre de la sesión
+                const newChatLink = document.createElement("a");
+                newChatLink.href = `/chat/${session_id}`;
+                newChatLink.textContent = session_id.slice(0, 8) + "...";
+                
+                // Crear el formulario para eliminar la conversación
+                const deleteForm = document.createElement("form");
+                deleteForm.action = `/chat/${session_id}/eliminar`; // La ruta de eliminación
+                deleteForm.method = "POST";
+                const deleteButton = document.createElement("button");
+                deleteButton.type = "submit";
+                deleteButton.classList.add("delete-btn");
+                deleteButton.textContent = "🗑";  // O el ícono que prefieras
+        
+                // Agregar el enlace y el botón de eliminación al contenedor
+                deleteForm.appendChild(deleteButton);
+                newChatItem.appendChild(newChatLink);
+                newChatItem.appendChild(deleteForm);
+        
+                // Agregar el nuevo chat a la lista
+                chatList.appendChild(newChatItem);
+            }
+            
+            // Aquí, ya sea nueva conversación o no, solo envía el mensaje UNA VEZ
+            enviarMensaje();
+        }
+        
+        async function enviarMensaje() {
+            const input = document.getElementById("mensaje");
+            const contenido = input.value.trim();
+            if (!contenido) return;
+
+            const chatbox = document.getElementById("chat");
+            chatbox.innerHTML += `<div class="user"><b>Tú:</b> ${contenido}</div>`;
+            input.value = "";
+
+            // Mostrar el mensaje de "escribiendo" mientras la IA responde
+            chatbox.innerHTML += `<div class="typing">IA está escribiendo...</div>`;
+
+            const res = await fetch(`/chat/${session_id}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message: contenido })
+            });
+            const data = await res.json();
+
+            // Eliminar el mensaje de "escribiendo" cuando la IA responda
+            const typingMessage = document.querySelector(".typing");
+            if (typingMessage) typingMessage.remove();
+
+            if (data.response) {
+                chatbox.innerHTML += `<div class="assistant"><b>IA:</b> ${data.response}</div>`;
+            } else {
+                chatbox.innerHTML += `<div class="error">Error: ${data.error}</div>`;
+            }
+
+            chatbox.scrollTop = chatbox.scrollHeight;
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            document.getElementById("mensaje").addEventListener("keydown", (e) => {
+                if (e.key === "Enter") {
+                    if (!session_id) {
+                        iniciarChat();  // Si no hay session_id, iniciar chat con primer mensaje
+                    } else {
+                        enviarMensaje();  // Si ya existe, solo enviar el mensaje
+                    }
+                }
+            });
+        });
+    </script>
+</head>
+<body>
+    <div class="sidebar">
+        <h2>💬 Chat IA</h2>
+        <a href="/">⬅ Volver al index</a>
+        <a href="/new" class="new-chat">➕ Nueva conversación</a>
+    
+        <div id="chat-list" style="display: flex; flex-direction: column; gap: 8px;">
+            {% for s in sesiones %}
+            <div class="session-item">
+                <a href="{{ url_for('chat', session_id=s) }}">{{ s[:8] }}...</a>
+                <form action="{{ url_for('eliminar_conversacion', session_id=s) }}" method="POST" style="display:inline;">
+                    <button type="submit" class="delete-btn">🗑</button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <div class="main">
+        <div id="chat" class="chat-box">
+            {% for m in mensajes %}
+                <div class="{{ m.role }}">
+                    <b>{{ 'Tú' if m.role == 'user' else 'IA' }}:</b> {{ m.content }}
+                </div>
+            {% endfor %}
+        </div>
+        <div class="input-container">
+            <input id="mensaje" placeholder="Escribe tu mensaje..." autofocus />
+        </div>
+    </div>
+</body>
+</html>
