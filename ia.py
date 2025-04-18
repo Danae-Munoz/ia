@@ -71,7 +71,7 @@ def responder(session_id):
     db.session.add(Conversacion(session_id=session_id, role='user', content=mensaje_usuario))
     db.session.commit()
 
-    historial = [{"role": "system", "content": "Responde de forma breve, clara y coherente. Usa pocas palabras."}]
+    historial = [{"role": "system", "content": "Responde de forma breve, clara y coherente. Usa pocas palabras y se rapido."}]
     anteriores = Conversacion.query.filter_by(session_id=session_id).order_by(Conversacion.timestamp).all()
     for m in anteriores:
         historial.append({"role": m.role, "content": m.content})
