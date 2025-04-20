@@ -83,46 +83,41 @@
         
     </style>
     <script>
-        let session_id = null;  // Variable para almacenar el session_id
+        let session_id = "{{ session_id | safe }}";  // <- ESTO asigna el session_id desde Flask
 
         async function iniciarChat() {
             const input = document.getElementById("mensaje");
             const contenido = input.value.trim();
         
             if (contenido && !session_id) {
-                // Crear nuevo session_id
-                session_id = contenido.slice(0, 20);  // O usa UUID si prefieres
-                
+                // Crear nuevo session_id con UUID
+                session_id = crypto.randomUUID();  // ✅ Aquí usamos UUID
+        
                 // Agregar nuevo enlace en el sidebar junto con el botón de eliminar
                 const chatList = document.getElementById("chat-list");
                 const newChatItem = document.createElement("div");
                 newChatItem.classList.add("session-item");
         
-                // Crear enlace con el nombre de la sesión
                 const newChatLink = document.createElement("a");
                 newChatLink.href = `/chat/${session_id}`;
                 newChatLink.textContent = session_id.slice(0, 8) + "...";
-                
-                // Crear el formulario para eliminar la conversación
+        
                 const deleteForm = document.createElement("form");
-                deleteForm.action = `/chat/${session_id}/eliminar`; // La ruta de eliminación
+                deleteForm.action = `/chat/${session_id}/eliminar`;
                 deleteForm.method = "POST";
+        
                 const deleteButton = document.createElement("button");
                 deleteButton.type = "submit";
                 deleteButton.classList.add("delete-btn");
-                deleteButton.textContent = "🗑";  // O el ícono que prefieras
+                deleteButton.textContent = "🗑";
         
-                // Agregar el enlace y el botón de eliminación al contenedor
                 deleteForm.appendChild(deleteButton);
                 newChatItem.appendChild(newChatLink);
                 newChatItem.appendChild(deleteForm);
-        
-                // Agregar el nuevo chat a la lista
                 chatList.appendChild(newChatItem);
             }
-            
-            // Aquí, ya sea nueva conversación o no, solo envía el mensaje UNA VEZ
-            enviarMensaje();
+        
+            enviarMensaje();  // Enviar el mensaje de todas formas
         }
         
         async function enviarMensaje() {

@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify, render_template, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
+from flask import Response, stream_with_context
 from datetime import datetime
 import ollama
 import os
