@@ -98,6 +98,33 @@
         .new-chat-btn:hover {
             background: #45a049;
         }
+        .welcome-message {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 12px 20px; /* Padding reducido */
+            font-size: 16px; /* Tamaño de texto más pequeño */
+            font-weight: 400;
+            text-align: center;
+            color: #2c3e50; /* Color suave */
+            background-color: #ecf0f1; /* Fondo claro */
+            border-radius: 8px;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1); /* Sombra más sutil */
+            border: 1px solid #bdc3c7; /* Borde suave */
+            max-width: 60%; /* Contenedor más pequeño */
+            margin: 10px auto; /* Centrando con margen reducido */
+        }
+        
+        .welcome-message p {
+            margin: 0;
+            color: #7f8c8d;
+        }
+        
+        .welcome-message:hover {
+            transform: translateY(-2px); /* Efecto de elevación más sutil */
+            cursor: pointer;
+        }
+        
     </style>
     <script>
         let session_id = "{{ session_id | safe }}";
@@ -293,7 +320,9 @@
     <div class="main">
         <div id="chat" class="chat-box">
             {% if not mensajes %}
-                <div class="assistant"><b>IA:</b> ¡Bienvenid@! Escribe algo para comenzar nuestra conversación. 😊</div>
+                <div class="welcome-message">
+                    <h2>¡Bienvenida! Escribe algo para comenzar nuestra conversación. 😊</h2>
+                </div>
             {% else %}
                 {% for m in mensajes %}
                     <div class="{{ m.role }}">
@@ -302,6 +331,7 @@
                 {% endfor %}
             {% endif %}
         </div>
+        
         
         
         <div class="input-container">
