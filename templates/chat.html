@@ -40,7 +40,6 @@
         }
         input {
             flex: 1; padding: 10px; font-size: 16px;
-            
         }
         .sessions {
             list-style: none;
@@ -62,13 +61,16 @@
             color: white;
             text-decoration: none;
             flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         
         .session-item form {
             margin: 0;
         }
         
-        .session-item button {
+        .delete-btn {
             background: #ff4d4d;
             border: none;
             color: white;
@@ -77,13 +79,28 @@
             cursor: pointer;
         }
         
-        .session-item button:hover {
+        .delete-btn:hover {
             background: #ff1a1a;
         }
         
+        .new-chat-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            display: block;
+        }
+        
+        .new-chat-btn:hover {
+            background: #45a049;
+        }
     </style>
     <script>
-        let session_id = "{{ session_id | safe }}";  // <- ESTO asigna el session_id desde Flask
+        let session_id = "{{ session_id | safe }}";
 
         async function iniciarChat() {
             const input = document.getElementById("mensaje");
@@ -91,33 +108,40 @@
         
             if (contenido && !session_id) {
                 // Crear nuevo session_id con UUID
-                session_id = crypto.randomUUID();  // ✅ Aquí usamos UUID
+                session_id = crypto.randomUUID();
         
-                // Agregar nuevo enlace en el sidebar junto con el botón de eliminar
+                // Agregar nuevo enlace en el sidebar
                 const chatList = document.getElementById("chat-list");
                 const newChatItem = document.createElement("div");
                 newChatItem.classList.add("session-item");
         
                 const newChatLink = document.createElement("a");
                 newChatLink.href = `/chat/${session_id}`;
-                newChatLink.textContent = session_id.slice(0, 8) + "...";
+                newChatLink.textContent = contenido.split(' ').slice(0, 3).join(' ').substring(0, 30);
         
                 const deleteForm = document.createElement("form");
                 deleteForm.action = `/chat/${session_id}/eliminar`;
                 deleteForm.method = "POST";
         
                 const deleteButton = document.createElement("button");
-                deleteButton.type = "submit";
+                deleteButton.type = "button";
                 deleteButton.classList.add("delete-btn");
                 deleteButton.textContent = "🗑";
+                deleteButton.onclick = () => eliminarSesion(session_id);
         
+                const hiddenInput = document.createElement("input");
+                hiddenInput.type = "hidden";
+                hiddenInput.name = "session_id_actual";
+                hiddenInput.value = session_id;
+        
+                deleteForm.appendChild(hiddenInput);
                 deleteForm.appendChild(deleteButton);
                 newChatItem.appendChild(newChatLink);
                 newChatItem.appendChild(deleteForm);
                 chatList.appendChild(newChatItem);
             }
         
-            enviarMensaje();  // Enviar el mensaje de todas formas
+            enviarMensaje();
         }
         
         async function enviarMensaje() {
@@ -146,7 +170,7 @@
         
             if (data.response) {
                 chatbox.innerHTML += `<div class="assistant"><b>IA:</b> ${data.response}</div>`;
-                await actualizarListaSesiones();  // 🔄 Actualiza el sidebar después de enviar el mensaje
+                await actualizarListaSesiones();
             } else {
                 chatbox.innerHTML += `<div class="error">Error: ${data.error}</div>`;
             }
@@ -154,55 +178,100 @@
             chatbox.scrollTop = chatbox.scrollHeight;
         }
         
-        document.addEventListener("DOMContentLoaded", () => {
-            document.getElementById("mensaje").addEventListener("keydown", (e) => {
-                if (e.key === "Enter") {
-                    if (!session_id) {
-                        iniciarChat();  // Si no hay session_id, iniciar chat con primer mensaje
-                    } else {
-                        enviarMensaje();  // Si ya existe, solo enviar el mensaje
+        async function eliminarSesion(sessionId) {
+            try {
+                const formData = new FormData();
+                formData.append('session_id_actual', session_id);
+                
+                const response = await fetch(`/eliminar/${sessionId}`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.redirected) {
+                    window.location.href = response.url;
+                } else {
+                    // Si no hay redirección, actualizar la lista
+                    await actualizarListaSesiones();
+                    
+                    // Si era la sesión actual, ir al index
+                    if (sessionId === session_id) {
+                        window.location.href = 'chat';
                     }
                 }
-            });
-        });
+            } catch (error) {
+                console.error('Error al eliminar:', error);
+                // Si falla, intentar recargar la página
+                window.location.reload();
+            }
+        }
 
         async function actualizarListaSesiones() {
             const res = await fetch('/api/sesiones');
             const sesiones = await res.json();
         
             const chatList = document.getElementById("chat-list");
-            chatList.innerHTML = "";  // Limpia la lista
+            chatList.innerHTML = "";
         
             sesiones.forEach(s => {
                 const item = document.createElement("div");
                 item.classList.add("session-item");
         
                 const link = document.createElement("a");
-                link.href = `/chat/${s}`;
-                link.textContent = s.slice(0, 8) + "...";
+                link.href = `/chat/${s.id}`;
+                link.textContent = s.name;
         
                 const form = document.createElement("form");
-                form.action = `/chat/${s}/eliminar`;
+                form.action = `/chat/${s.id}/eliminar`;
                 form.method = "POST";
         
                 const btn = document.createElement("button");
-                btn.type = "submit";
+                btn.type = "button";
                 btn.textContent = "🗑";
                 btn.classList.add("delete-btn");
+                btn.onclick = () => eliminarSesion(s.id);
         
+                const hiddenInput = document.createElement("input");
+                hiddenInput.type = "hidden";
+                hiddenInput.name = "session_id_actual";
+                hiddenInput.value = session_id;
+        
+                form.appendChild(hiddenInput);
                 form.appendChild(btn);
                 item.appendChild(link);
                 item.appendChild(form);
                 chatList.appendChild(item);
             });
         }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            document.getElementById("mensaje").addEventListener("keydown", (e) => {
+                if (e.key === "Enter") {
+                    if (!session_id) {
+                        iniciarChat();
+                    } else {
+                        enviarMensaje();
+                    }
+                }
+            });
+
+            // Manejar clicks en botones de eliminar existentes al cargar
+            document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const form = this.closest('form');
+                    const sessionId = form.action.split('/eliminar/')[1].split('?')[0];
+                    eliminarSesion(sessionId);
+                });
+            });
+        });
     </script>
 </head>
 <body>
     <div class="sidebar">
         <h2>💬 Chat IA</h2>
         <a href="/">⬅ Volver al index</a>
-        <a href="/new" class="new-chat">➕ Nueva conversación</a>
+        <a href="/new" class="new-chat-btn">➕ Nueva conversación</a>
         <form action="/eliminar_todo" method="POST" onsubmit="return confirm('¿Seguro que quieres borrar TODAS las conversaciones? Esta acción no se puede deshacer.');">
             <button type="submit" style="background: #ff4d4d; color: white; border: none; padding: 8px; border-radius: 4px; cursor: pointer; width: 100%;">
                 🧹 Borrar TODAS las conversaciones
@@ -211,12 +280,11 @@
         <div id="chat-list" style="display: flex; flex-direction: column; gap: 8px;">
             {% for s in sesiones %}
             <div class="session-item">
-                <a href="{{ url_for('chat', session_id=s) }}">{{ s[:8] }}...</a>
-                <form action="{{ url_for('eliminar_conversacion', session_id=s) }}" method="POST" style="display:inline;">
+                <a href="{{ url_for('chat', session_id=s.session_id) }}">{{ s.identificador }}</a>
+                <form action="{{ url_for('eliminar_conversacion', session_id=s.session_id) }}" method="POST" style="display:inline;">
                     <input type="hidden" name="session_id_actual" value="{{ session_id }}">
-                    <button type="submit" class="delete-btn">🗑</button>
+                    <button type="button" class="delete-btn">🗑</button>
                 </form>
-                
             </div>
             {% endfor %}
         </div>
@@ -234,9 +302,5 @@
             <input id="mensaje" placeholder="Escribe tu mensaje..." autofocus />
         </div>
     </div>
-
-
-    
-    
 </body>
 </html>

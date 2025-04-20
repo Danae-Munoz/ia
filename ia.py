@@ -23,6 +23,11 @@ class Conversacion(db.Model):
     content = db.Column(db.Text, nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
+class SesionVisual(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    session_id = db.Column(db.String(64), nullable=False, unique=True)
+    identificador = db.Column(db.String(50), nullable=False)
+
 with app.app_context():
     db.create_all()
 
@@ -31,37 +36,56 @@ def limpiar(texto):
 
 @app.route('/')
 def index():
-    sesiones = db.session.query(Conversacion.session_id).distinct().all()
-    sesiones = [s[0] for s in sesiones]
+    sesiones = db.session.query(SesionVisual.session_id, SesionVisual.identificador).all()
     return render_template('index.html', sesiones=sesiones)
-
 
 @app.route('/chat/<session_id>')
 def chat(session_id):
     mensajes = Conversacion.query.filter_by(session_id=session_id).order_by(Conversacion.timestamp).all()
-    sesiones = db.session.query(Conversacion.session_id).distinct().all()
-    sesiones = [s[0] for s in sesiones]
-    return render_template('chat.html', mensajes=mensajes, session_id=session_id, sesiones=sesiones)
-
+    sesion_visual = SesionVisual.query.filter_by(session_id=session_id).first()
+    identificador = sesion_visual.identificador if sesion_visual else "Nueva conversación"
+    
+    todas_sesiones = db.session.query(
+        SesionVisual.session_id, 
+        SesionVisual.identificador
+    ).all()
+    
+    return render_template('chat.html', 
+        mensajes=mensajes, 
+        session_id=session_id,
+        sesiones=todas_sesiones,
+        identificador_actual=identificador
+    )
 
 @app.route('/new')
 def nueva():
     nueva_id = str(uuid.uuid4())
     return redirect(url_for('chat', session_id=nueva_id))
 
-
-
 @app.route('/eliminar/<session_id>', methods=['POST'])
 def eliminar_conversacion(session_id):
     session_id_actual = request.form.get("session_id_actual")
 
-    # Eliminar todos los mensajes de la conversación eliminada
-    Conversacion.query.filter_by(session_id=session_id).delete()
-    db.session.commit()
+    # Verificar si existe la conversación antes de eliminar
+    existe_conversacion = Conversacion.query.filter_by(session_id=session_id).first()
+    existe_sesion_visual = SesionVisual.query.filter_by(session_id=session_id).first()
 
-    # Redirigir a la sesión que estaba abierta actualmente
-    return redirect(url_for('chat', session_id=session_id_actual))
+    if existe_conversacion or existe_sesion_visual:
+        # Eliminar todos los mensajes y el registro visual si existen
+        Conversacion.query.filter_by(session_id=session_id).delete()
+        SesionVisual.query.filter_by(session_id=session_id).delete()
+        db.session.commit()
 
+    # Redirigir al index si estamos eliminando la sesión actual
+    if session_id == session_id_actual:
+        return redirect(url_for('/chat/'))
+    
+    # Redirigir a la sesión actual si es diferente
+    if session_id_actual:
+        return redirect(url_for('chat', session_id=session_id_actual))
+    
+    # Por defecto redirigir al index
+    return redirect(url_for('/chat/'))
 
 @app.route('/chat/<session_id>', methods=['POST'])
 def responder(session_id):
@@ -70,7 +94,18 @@ def responder(session_id):
     if not mensaje_usuario:
         return jsonify({"error": "Mensaje vacío"}), 400
 
+    # Verificar si es el primer mensaje de esta sesión
+    primer_mensaje = not Conversacion.query.filter_by(session_id=session_id).first()
+    
     db.session.add(Conversacion(session_id=session_id, role='user', content=mensaje_usuario))
+    
+    if primer_mensaje:
+        # Extraer primera palabra o primeras 3 palabras como identificador
+        identificador = ' '.join(mensaje_usuario.split()[:3])
+        if len(identificador) > 30:  # Limitar longitud
+            identificador = identificador[:27] + "..."
+        db.session.add(SesionVisual(session_id=session_id, identificador=identificador))
+    
     db.session.commit()
 
     historial = [{"role": "system", "content": "Responde de forma breve, clara y coherente. Usa pocas palabras y se rapido."}]
@@ -92,16 +127,14 @@ def responder(session_id):
 @app.route('/eliminar_todo', methods=['POST'])
 def eliminar_todo():
     Conversacion.query.delete()
+    SesionVisual.query.delete()
     db.session.commit()
-    return redirect(url_for('chat'))
+    return redirect(url_for('index'))
 
 @app.route('/api/sesiones')
 def api_sesiones():
-    sesiones = db.session.query(Conversacion.session_id).distinct().all()
-    sesiones = [s[0] for s in sesiones]
-    return jsonify(sesiones)
-
-
+    sesiones = db.session.query(SesionVisual.session_id, SesionVisual.identificador).all()
+    return jsonify([{"id": s.session_id, "name": s.identificador} for s in sesiones])
 
 if __name__ == '__main__':
     app.run(debug=True)
