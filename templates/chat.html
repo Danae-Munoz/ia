@@ -170,14 +170,20 @@
         <h2>💬 Chat IA</h2>
         <a href="/">⬅ Volver al index</a>
         <a href="/new" class="new-chat">➕ Nueva conversación</a>
-    
+        <form action="/eliminar_todo" method="POST" onsubmit="return confirm('¿Seguro que quieres borrar TODAS las conversaciones? Esta acción no se puede deshacer.');">
+            <button type="submit" style="background: #ff4d4d; color: white; border: none; padding: 8px; border-radius: 4px; cursor: pointer; width: 100%;">
+                🧹 Borrar TODAS las conversaciones
+            </button>
+        </form>
         <div id="chat-list" style="display: flex; flex-direction: column; gap: 8px;">
             {% for s in sesiones %}
             <div class="session-item">
                 <a href="{{ url_for('chat', session_id=s) }}">{{ s[:8] }}...</a>
                 <form action="{{ url_for('eliminar_conversacion', session_id=s) }}" method="POST" style="display:inline;">
+                    <input type="hidden" name="session_id_actual" value="{{ session_id }}">
                     <button type="submit" class="delete-btn">🗑</button>
                 </form>
+                
             </div>
             {% endfor %}
         </div>
@@ -195,5 +201,9 @@
             <input id="mensaje" placeholder="Escribe tu mensaje..." autofocus />
         </div>
     </div>
+
+
+    
+    
 </body>
 </html>

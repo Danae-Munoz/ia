@@ -53,13 +53,14 @@ def nueva():
 
 @app.route('/eliminar/<session_id>', methods=['POST'])
 def eliminar_conversacion(session_id):
-    # Eliminar todas las entradas de la conversación con este session_id
+    session_id_actual = request.form.get("session_id_actual")
+
+    # Eliminar todos los mensajes de la conversación eliminada
     Conversacion.query.filter_by(session_id=session_id).delete()
     db.session.commit()
-    
-    # Redirigir a la página del chat, no al index
-    return redirect(url_for('chat', session_id=session_id))
 
+    # Redirigir a la sesión que estaba abierta actualmente
+    return redirect(url_for('chat', session_id=session_id_actual))
 
 
 @app.route('/chat/<session_id>', methods=['POST'])
@@ -87,6 +88,13 @@ def responder(session_id):
     db.session.commit()
 
     return jsonify({"response": contenido})
+
+@app.route('/eliminar_todo', methods=['POST'])
+def eliminar_todo():
+    Conversacion.query.delete()
+    db.session.commit()
+    return redirect(url_for('index'))
+
 
 if __name__ == '__main__':
     app.run(debug=True)
