@@ -93,7 +93,7 @@ def responder(session_id):
 def eliminar_todo():
     Conversacion.query.delete()
     db.session.commit()
-    return redirect(url_for('index'))
+    return redirect(url_for('chat'))
 
 
 if __name__ == '__main__':
