@@ -292,12 +292,18 @@
     
     <div class="main">
         <div id="chat" class="chat-box">
-            {% for m in mensajes %}
-                <div class="{{ m.role }}">
-                    <b>{{ 'Tú' if m.role == 'user' else 'IA' }}:</b> {{ m.content }}
-                </div>
-            {% endfor %}
+            {% if not mensajes %}
+                <div class="assistant"><b>IA:</b> ¡Bienvenid@! Escribe algo para comenzar nuestra conversación. 😊</div>
+            {% else %}
+                {% for m in mensajes %}
+                    <div class="{{ m.role }}">
+                        <b>{{ 'Tú' if m.role == 'user' else 'IA' }}:</b> {{ m.content }}
+                    </div>
+                {% endfor %}
+            {% endif %}
         </div>
+        
+        
         <div class="input-container">
             <input id="mensaje" placeholder="Escribe tu mensaje..." autofocus />
         </div>
