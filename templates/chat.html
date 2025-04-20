@@ -124,34 +124,36 @@
             const input = document.getElementById("mensaje");
             const contenido = input.value.trim();
             if (!contenido) return;
-
+        
             const chatbox = document.getElementById("chat");
             chatbox.innerHTML += `<div class="user"><b>Tú:</b> ${contenido}</div>`;
             input.value = "";
-
+        
             // Mostrar el mensaje de "escribiendo" mientras la IA responde
             chatbox.innerHTML += `<div class="typing">IA está escribiendo...</div>`;
-
+        
             const res = await fetch(`/chat/${session_id}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ message: contenido })
             });
+        
             const data = await res.json();
-
+        
             // Eliminar el mensaje de "escribiendo" cuando la IA responda
             const typingMessage = document.querySelector(".typing");
             if (typingMessage) typingMessage.remove();
-
+        
             if (data.response) {
                 chatbox.innerHTML += `<div class="assistant"><b>IA:</b> ${data.response}</div>`;
+                await actualizarListaSesiones();  // 🔄 Actualiza el sidebar después de enviar el mensaje
             } else {
                 chatbox.innerHTML += `<div class="error">Error: ${data.error}</div>`;
             }
-
+        
             chatbox.scrollTop = chatbox.scrollHeight;
         }
-
+        
         document.addEventListener("DOMContentLoaded", () => {
             document.getElementById("mensaje").addEventListener("keydown", (e) => {
                 if (e.key === "Enter") {
@@ -163,6 +165,37 @@
                 }
             });
         });
+
+        async function actualizarListaSesiones() {
+            const res = await fetch('/api/sesiones');
+            const sesiones = await res.json();
+        
+            const chatList = document.getElementById("chat-list");
+            chatList.innerHTML = "";  // Limpia la lista
+        
+            sesiones.forEach(s => {
+                const item = document.createElement("div");
+                item.classList.add("session-item");
+        
+                const link = document.createElement("a");
+                link.href = `/chat/${s}`;
+                link.textContent = s.slice(0, 8) + "...";
+        
+                const form = document.createElement("form");
+                form.action = `/chat/${s}/eliminar`;
+                form.method = "POST";
+        
+                const btn = document.createElement("button");
+                btn.type = "submit";
+                btn.textContent = "🗑";
+                btn.classList.add("delete-btn");
+        
+                form.appendChild(btn);
+                item.appendChild(link);
+                item.appendChild(form);
+                chatList.appendChild(item);
+            });
+        }
     </script>
 </head>
 <body>

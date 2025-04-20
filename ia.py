@@ -95,6 +95,13 @@ def eliminar_todo():
     db.session.commit()
     return redirect(url_for('chat'))
 
+@app.route('/api/sesiones')
+def api_sesiones():
+    sesiones = db.session.query(Conversacion.session_id).distinct().all()
+    sesiones = [s[0] for s in sesiones]
+    return jsonify(sesiones)
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)
