@@ -298,7 +298,7 @@
     <div class="sidebar">
         <h2>💬 Chat IA</h2>
         <a href="/">⬅ Volver al index</a>
-        <a href="/new" class="new-chat-btn">➕ Nueva conversación</a>
+        <a href="/new" class="">➕ Nueva conversación</a>
         <form action="/eliminar_todo" method="POST" onsubmit="return confirm('¿Seguro que quieres borrar TODAS las conversaciones? Esta acción no se puede deshacer.');">
             <button type="submit" style="background: #ff4d4d; color: white; border: none; padding: 8px; border-radius: 4px; cursor: pointer; width: 100%;">
                 🧹 Borrar TODAS las conversaciones
@@ -321,7 +321,7 @@
         <div id="chat" class="chat-box">
             {% if not mensajes %}
                 <div class="welcome-message">
-                    <h2>¡Bienvenida! Escribe algo para comenzar nuestra conversación. 😊</h2>
+                    <h2>¡Bienvenid@! Escribe algo para comenzar nuestra conversación. 😊</h2>
                 </div>
             {% else %}
                 {% for m in mensajes %}
