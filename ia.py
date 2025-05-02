@@ -11,8 +11,8 @@ import re
 
 app = Flask(__name__)
 
-# 🔐 Añade esto justo después de crear la app:
-app.secret_key = 'nanegonza'  # Puedes poner cualquier texto aquí
+#  justo después de crear la app:
+app.secret_key = 'nanegonza'  # cualquier texto aquí
 
 # Base de datos en carpeta instance (seguro para Flask)
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -96,7 +96,7 @@ def nueva():
 def eliminar_conversacion(session_id):
     session_id_actual = request.form.get("session_id_actual")
 
-    # Asegúrate de que el usuario sea el dueño
+    # el usuario sea el dueño
     Conversacion.query.filter_by(session_id=session_id, user_id=current_user.id).delete()
     SesionVisual.query.filter_by(session_id=session_id, user_id=current_user.id).delete()
     db.session.commit()
@@ -122,7 +122,7 @@ def responder(session_id):
         session_id=session_id,
         role='user',
         content=mensaje_usuario,
-        user_id=current_user.id  # 👈 Esto es nuevo
+        user_id=current_user.id  #  Esto es nuevo
     ))
 
     if primer_mensaje:
@@ -132,12 +132,12 @@ def responder(session_id):
         db.session.add(SesionVisual(
             session_id=session_id,
             identificador=identificador,
-            user_id=current_user.id  # 👈 Esto también es nuevo
+            user_id=current_user.id  # Esto también es nuevo
         ))
 
     db.session.commit()
 
-    historial = [{"role": "system", "content": "Responde de forma breve, clara y coherente. Usa pocas palabras y se rapido."}]
+    historial = [{"role": "system", "content": "Responde de forma breve, clara y coherente. Usa pocas palabras y se rapido."}]# cantidad de tokens
     anteriores = Conversacion.query.filter_by(session_id=session_id, user_id=current_user.id).order_by(Conversacion.timestamp).all()
     for m in anteriores:
         historial.append({"role": m.role, "content": m.content})
