@@ -4,10 +4,6 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask import Response, stream_with_context
 from datetime import datetime
-from rag_utils import retrieve_context
-from flask import request
-from rag_utils import ingest_document
-import requests
 import ollama
 import os
 import uuid
@@ -210,22 +206,6 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
-def generate_answer(prompt):
-    context = retrieve_context(prompt)
-    full_prompt = f"Contexto:\n{context}\n\nPregunta: {prompt}"
-
-    response = requests.post(
-        "http://localhost:11434/api/generate",
-        json={"model": "phi3:instruct", "prompt": full_prompt}
-    )
-    return response.json()['response']
-
-@app.route("/ingest", methods=["POST"])
-def ingest():
-    data = request.json
-    print("Datos recibidos:", data)
-    return jsonify({"status": "OK"})
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=5000, ssl_context='adhoc')
-
+    app.run(debug=True)
