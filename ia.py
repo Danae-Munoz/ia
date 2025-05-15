@@ -4,6 +4,7 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask import Response, stream_with_context
 from datetime import datetime
+from light_rag.light_rag import LightRAG
 import ollama
 import os
 import uuid
@@ -18,6 +19,8 @@ app.secret_key = 'nanegonza'  # cualquier texto aquí
 basedir = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'instance', 'db.sqlite3')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# Inicializa LightRAG una sola vez al inicio
+light_rag = LightRAG(docs_folder='light_rag/documents')
 
 db = SQLAlchemy(app)
 login_manager = LoginManager()
@@ -122,7 +125,7 @@ def responder(session_id):
         session_id=session_id,
         role='user',
         content=mensaje_usuario,
-        user_id=current_user.id  #  Esto es nuevo
+        user_id=current_user.id
     ))
 
     if primer_mensaje:
@@ -132,15 +135,35 @@ def responder(session_id):
         db.session.add(SesionVisual(
             session_id=session_id,
             identificador=identificador,
-            user_id=current_user.id  # Esto también es nuevo
+            user_id=current_user.id
         ))
 
     db.session.commit()
 
-    historial = [{"role": "system", "content": "Responde de forma breve, clara y coherente. Usa pocas palabras y se rapido."}]# cantidad de tokens
-    anteriores = Conversacion.query.filter_by(session_id=session_id, user_id=current_user.id).order_by(Conversacion.timestamp).all()
-    for m in anteriores:
-        historial.append({"role": m.role, "content": m.content})
+    # Usar LightRAG para obtener contexto relevante
+    contexto = light_rag.get_relevant_context(mensaje_usuario, top_k=5)
+
+    # Construir prompt adaptado para conversación cálida con adulto mayor
+    prompt = f"""
+Eres un asistente amigable y cercano que conversa con un adulto mayor para hacer su vida más alegre y divertida.
+Usa un lenguaje claro, respetuoso y cálido.
+Responde de manera breve, con oraciones cortas y directas.
+Usa un lenguaje simple y evita extenderte demasiado.
+Utiliza el siguiente contexto para responder de forma útil y amable:
+
+Contexto relevante:
+{contexto}
+
+Pregunta del adulto mayor:
+{mensaje_usuario}
+
+Responde como un amigo que se preocupa por su bienestar y felicidad.
+"""
+
+    historial = [
+        {"role": "system", "content": "Eres un asistente virtual empático y amigable."},
+        {"role": "user", "content": prompt}
+    ]
 
     try:
         respuesta = ollama.chat(model="phi3:instruct", messages=historial)
@@ -152,11 +175,12 @@ def responder(session_id):
         session_id=session_id,
         role='assistant',
         content=contenido,
-        user_id=current_user.id  # 👈 Muy importante
+        user_id=current_user.id
     ))
     db.session.commit()
 
     return jsonify({"response": contenido})
+
 
 
 @app.route('/eliminar_todo', methods=['POST'])
