@@ -3,3 +3,7 @@ Flask-SQLAlchemy
 Flask-Login
 Werkzeug
 ollama
+sentence-transformers
+faiss-cpu
+requests
+
