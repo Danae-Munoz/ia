@@ -119,8 +119,10 @@ def responder(session_id):
     if not mensaje_usuario:
         return jsonify({"error": "Mensaje vacío"}), 400
 
+    # Verifica si es el primer mensaje de la sesión
     primer_mensaje = not Conversacion.query.filter_by(session_id=session_id, user_id=current_user.id).first()
 
+    # Guarda el mensaje del usuario
     db.session.add(Conversacion(
         session_id=session_id,
         role='user',
@@ -128,6 +130,7 @@ def responder(session_id):
         user_id=current_user.id
     ))
 
+    # Si es el primer mensaje, crea la sesión visual
     if primer_mensaje:
         identificador = ' '.join(mensaje_usuario.split()[:3])
         if len(identificador) > 30:
@@ -140,11 +143,15 @@ def responder(session_id):
 
     db.session.commit()
 
-    # Usar LightRAG para obtener contexto relevante
+    # Obtener contexto relevante
     contexto = light_rag.get_relevant_context(mensaje_usuario, top_k=5)
 
-    # Construir prompt adaptado para conversación cálida con adulto mayor
-    prompt = f"""
+    # Verificar si hay contexto
+    tiene_contexto = bool(contexto and contexto.strip())
+
+    if tiene_contexto:
+        # Construir prompt con contexto
+        prompt = f"""
 Eres un asistente amigable y cercano que conversa con un adulto mayor para hacer su vida más alegre y divertida.
 Usa un lenguaje claro, respetuoso y cálido.
 Responde de manera breve, con oraciones cortas y directas.
@@ -153,6 +160,18 @@ Utiliza el siguiente contexto para responder de forma útil y amable:
 
 Contexto relevante:
 {contexto}
+
+Pregunta del adulto mayor:
+{mensaje_usuario}
+
+Responde como un amigo que se preocupa por su bienestar y felicidad.
+"""
+    else:
+        # Prompt sin contexto
+        prompt = f"""
+Eres un asistente amigable y cercano que conversa con un adulto mayor para hacer su vida más alegre y divertida.
+No encontraste información útil en los documentos.
+Responde de la mejor manera posible usando tu conocimiento general.
 
 Pregunta del adulto mayor:
 {mensaje_usuario}
@@ -171,6 +190,7 @@ Responde como un amigo que se preocupa por su bienestar y felicidad.
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+    # Guardar la respuesta del asistente
     db.session.add(Conversacion(
         session_id=session_id,
         role='assistant',
@@ -180,6 +200,7 @@ Responde como un amigo que se preocupa por su bienestar y felicidad.
     db.session.commit()
 
     return jsonify({"response": contenido})
+
 
 
 
